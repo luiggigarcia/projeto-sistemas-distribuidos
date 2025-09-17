@@ -1,0 +1,35 @@
+services:
+
+  broker:
+    build:
+      context: .
+      dockerfile: Dockerfile_broker.dockerfile
+    container_name: broker
+    ports:
+      - 5555:5555
+      - 5556:5556
+    volumes:
+      - .:/app
+
+  servidor:
+    build:
+      context: .
+      dockerfile: Dockerfile_servidor.dockerfile
+    container_name: servidor
+    volumes:
+      - .:/app
+    depends_on:
+      - broker
+
+  cliente:
+    build:
+      context: .
+      dockerfile: Dockerfile_cliente.dockerfile
+    container_name: cliente
+    stdin_open: true
+    tty: true
+    depends_on:
+      - servidor
+    volumes:
+      - .:/app
+
