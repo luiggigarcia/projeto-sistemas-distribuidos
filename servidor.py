@@ -1,6 +1,10 @@
 import os
 import zmq
 import time, json
+from datetime import datetime, timedelta, timezone
+
+# Definir timezone de Brasília (UTC-3)
+br_tz = timezone(timedelta(hours=-3))
 
 context = zmq.Context()
 socket = context.socket(zmq.REP)
@@ -15,27 +19,27 @@ while True:
         timestamp = dados.get("timestamp")
         status = "sucesso"
         description = ""
+        
+        time_br = datetime.now(br_tz).strftime("%H:%M:%S")
+        if not timestamp:
+            timestamp = time_br
 
-        # Validação dos dados do cliente
         if not user or not timestamp:
             status = "erro"
             description = "Dados de login inválidos: 'user' ou 'timestamp' ausente."
-        else:
-            print(f"Login recebido: user={user}, timestamp={timestamp}", flush=True)
-            print("Path: " + os.getcwd(), flush=True)
 
-            try:
-                with open("/app/logins.txt", "a", encoding="utf-8") as f:
-                    f.write(f"{user},{timestamp}\n")
-            except Exception as e:
-                status = "erro"
-                description = f"Erro ao gravar arquivo: {str(e)}"
+        try:
+            with open("/app/logins.txt", "a", encoding="utf-8") as f:
+                f.write(f"{user},{timestamp}\n")
+        except Exception as e:
+            status = "erro"
+            description = f"Erro ao gravar arquivo: {str(e)}"
 
         reply = {
             "service": "login",
             "data": {
                 "status": status,
-                "timestamp": time.time(),
+                "timestamp": time_br,
                 "description": description
             }
         }
@@ -54,11 +58,63 @@ while True:
                         users.append(user)
         except FileNotFoundError:
             users = []
+        time_br = datetime.now(br_tz).strftime("%H:%M:%S")
         reply = {
             "service": "users",
             "data": {
-                "timestamp": time.time(),
+                "timestamp": time_br,
                 "users": users
+            }
+        }
+        socket.send_json(reply)
+        continue
+
+    if request["service"] == "channel":
+        dados = request["data"]
+        channel = dados.get("channel")
+        timestamp = dados.get("timestamp")
+        status = "sucesso"
+        description = ""
+        time_br = datetime.now(br_tz).strftime("%H:%M:%S")
+        if not channel or not timestamp:
+            status = "erro"
+            description = "Dados de canal inválidos: 'channel' ou 'timestamp' ausente."
+        else:
+            try:
+                with open("/app/channels.txt", "a", encoding="utf-8") as f:
+                    f.write(f"{channel},{timestamp}\n")
+            except Exception as e:
+                status = "erro"
+                description = f"Erro ao gravar canal: {str(e)}"
+        reply = {
+            "service": "channel",
+            "data": {
+                "status": status,
+                "timestamp": time_br,
+                "description": description
+            }
+        }
+        socket.send_json(reply)
+        continue
+
+    if request["service"] == "channels":
+        dados = request["data"]
+        req_timestamp = dados.get("timestamp")
+        channels = []
+        try:
+            with open("/app/channels.txt", "r", encoding="utf-8") as f:
+                for line in f:
+                    channel = line.strip().split(",")[0]
+                    if channel:
+                        channels.append(channel)
+        except FileNotFoundError:
+            channels = []
+        time_br = datetime.now(br_tz).strftime("%H:%M:%S")
+        reply = {
+            "service": "channels",
+            "data": {
+                "timestamp": time_br,
+                "users": channels
             }
         }
         socket.send_json(reply)
