@@ -15,7 +15,6 @@ services:
     build:
       context: ..
       dockerfile: Docker/Dockerfile_servidor.dockerfile
-    # Do not set container_name when scaling; replicas will receive unique container names/hostnames.
     environment:
       - REFERENCE_ADDR=reference:5560
     volumes:

@@ -36,7 +36,7 @@ async function main() {
   const now = () => new Date().toLocaleTimeString('pt-BR')
   let data = { user: username, timestamp: now(), clock: incClock() }
   let reqMsg = { service: 'login', data }
-  await req.send(encode(reqMsg))
+  await req.send(encode(reqMsg));
   let [rawReply] = await req.receive()
   try { var reply = decode(rawReply) } catch (e) { reply = null }
   updateClockFromReply(reply && reply.data)
@@ -45,8 +45,8 @@ async function main() {
   while (true) {
     // 1. get channels
     reqMsg = { service: 'channels', data: { timestamp: now(), clock: incClock() } }
-    await req.send(encode(reqMsg))
-    [rawReply] = await req.receive()
+  await req.send(encode(reqMsg));
+  [rawReply] = await req.receive()
     try { reply = decode(rawReply) } catch (e) { reply = null }
     updateClockFromReply(reply && reply.data)
     let channels = (reply && reply.data && reply.data.channels) || []
@@ -55,8 +55,8 @@ async function main() {
       const newChannel = 'chan-' + randomText(5)
       console.log('No channels, creating', newChannel)
       reqMsg = { service: 'channel', data: { channel: newChannel, timestamp: now(), clock: incClock() } }
-      await req.send(encode(reqMsg))
-      [rawReply] = await req.receive()
+  await req.send(encode(reqMsg));
+  [rawReply] = await req.receive()
       try { reply = decode(rawReply) } catch (e) { reply = null }
       updateClockFromReply(reply && reply.data)
       channels = [newChannel]
@@ -71,8 +71,8 @@ async function main() {
       const message = `[${username}] ${randomText(40)}`
       const payload = { service: 'publish', data: { user: username, channel, message, timestamp: now(), clock: incClock() } }
       try {
-        await req.send(encode(payload))
-        [rawReply] = await req.receive()
+  await req.send(encode(payload));
+  [rawReply] = await req.receive()
         try { reply = decode(rawReply) } catch (e) { reply = null }
         updateClockFromReply(reply && reply.data)
         console.log('published ->', channel, reply && reply.data && reply.data.status)

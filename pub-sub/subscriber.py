@@ -14,7 +14,14 @@ print(f"Inscrito no tópico: {topic}")
 try:
     while True:
         msg = subscriber.recv_string()
-        print(f"[RECEBIDO] {msg}")
+        # mensagem no formato: "<topic> <payload>" — separamos para melhor exibição
+        try:
+            parts = msg.split(' ', 1)
+            topic = parts[0]
+            payload = parts[1] if len(parts) > 1 else ''
+            print(f"[RECEBIDO] tópico='{topic}' -> {payload}")
+        except Exception:
+            print(f"[RECEBIDO] {msg}")
 except KeyboardInterrupt:
     print("\nSaindo...")
 finally:

@@ -1,26 +1,5 @@
 #!/usr/bin/env python3
-"""
-Admin utility to interact with the reference service and servers' admin endpoints.
 
-Usage examples (run inside the Docker compose network):
-
-# list servers from reference
-python admin_tool.py list
-
-# poll clocks from all servers
-python admin_tool.py poll-clock
-
-# send election request to all servers
-python admin_tool.py election --all
-
-# set clock (instruct) on a specific server by name
-python admin_tool.py set-clock --server servidor2 --time 1690000000.0
-
-# announce coordinator via pubsub (topic 'servers')
-python admin_tool.py announce --coordinator servidor2
-
-This script uses ZeroMQ and MessagePack.
-"""
 import argparse
 import zmq
 import msgpack

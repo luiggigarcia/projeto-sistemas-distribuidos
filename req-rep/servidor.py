@@ -331,29 +331,36 @@ def pretty_print(service, data):
             status = data.get("status")
             desc = data.get("description", "")
             ts = data.get("timestamp", "")
+            user = data.get("user") or data.get("username")
             print(f"[LOGIN] status={status} time={ts} desc={desc}")
+            if user:
+                print(f"-> Usuário '{user}' está logado")
         elif service == "users":
             users = data.get("users", [])
             ts = data.get("timestamp", "")
             print(f"[USERS] timestamp={ts} count={len(users)}")
             if users:
-                print("+--------------------+")
-                print("| Usuários cadastrados |")
-                print("+--------------------+")
-                for u in users:
-                    print(f" - {u}")
-                print("+--------------------+")
+                print("+------------------------------+")
+                print("|     Usuários cadastrados     |")
+                print("+------------------------------+")
+                for i, u in enumerate(users, start=1):
+                    print(f" {i:2d}. {u}")
+                print("+------------------------------+")
+            else:
+                print("(nenhum usuário cadastrado)")
         elif service == "channels":
             channels = data.get("channels", [])
             ts = data.get("timestamp", "")
             print(f"[CHANNELS] timestamp={ts} count={len(channels)}")
             if channels:
-                print("+--------------------+")
-                print("| Canais cadastrados |")
-                print("+--------------------+")
-                for c in channels:
-                    print(f" - {c}")
-                print("+--------------------+")
+                print("+------------------------------+")
+                print("|       Canais cadastrados     |")
+                print("+------------------------------+")
+                for i, c in enumerate(channels, start=1):
+                    print(f" {i:2d}. {c}")
+                print("+------------------------------+")
+            else:
+                print("(nenhum canal cadastrado)")
         elif service in ("publish", "message"):
             status = data.get("status")
             msg = data.get("message") if service == "publish" else data.get("message")
@@ -441,6 +448,11 @@ while True:
                     # Salva histórico
                     with open("/app/storage-server/historico_msg.txt", "a", encoding="utf-8") as f:
                         f.write(f"{src},{dst},{message},{time_br},{c_pub}\n")
+                    # Log explícito de envio de mensagem para o terminal do servidor
+                    try:
+                        print(f"[SEND] {src} -> {dst}: {message} [{time_br}]")
+                    except Exception:
+                        pass
                 except Exception as e:
                     status = "erro"
                     error_msg = f"Erro ao enviar mensagem: {str(e)}"
@@ -522,7 +534,8 @@ while True:
                         "status": "logado",
                         "timestamp": time_br,
                         "description": f"Usuário '{user}' já está cadastrado e logado.",
-                        "clock": c
+                        "clock": c,
+                        "user": user
                     }
                 }
                 try:
@@ -545,7 +558,8 @@ while True:
                         "status": "sucesso",
                         "timestamp": time_br,
                         "description": "Login registrado com sucesso.",
-                        "clock": c
+                        "clock": c,
+                        "user": user
                     }
                 }
             except Exception as e:

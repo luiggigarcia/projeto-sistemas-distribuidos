@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""
-Reference service: REP server that handles rank, list, heartbeat, clock and election
-Also provides a simple interactive menu (when run with a TTY) to inspect and manage servers
-"""
+
 import os
 import time
 import json
@@ -14,7 +11,7 @@ import zmq
 STORAGE_DIR = os.environ.get('STORAGE_DIR', os.path.join(os.path.dirname(__file__), 'storage-server'))
 SERVERS_FILE = os.path.join(STORAGE_DIR, 'servers.txt')
 
-HEARTBEAT_TIMEOUT = 30.0  # seconds to consider a server dead if no heartbeat
+HEARTBEAT_TIMEOUT = 30.0 
 
 
 def ensure_storage():
@@ -51,7 +48,6 @@ def find_server_by_name(servers, name):
 
 
 def assign_rank(servers):
-    # simple strategy: smallest unused positive integer starting at 1
     used = {int(s.get('rank')) for s in servers if s.get('rank') is not None}
     r = 1
     while r in used:

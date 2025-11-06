@@ -1,4 +1,4 @@
-
+.github/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -61,10 +61,6 @@ target/
 # Docker / Compose local overrides
 **/.env
 docker-compose.override.yml
-
-# Runtime / storage files (persistidos localmente)
-req-rep/storage-server/
-req-rep/storage-server/*
 
 # Editor / OS
 .vscode/
