@@ -4,6 +4,7 @@ WORKDIR /app
 
 RUN pip install pyzmq
 
-COPY ./broker.py .
+# repo structure: repo root -> req-rep/broker.py
+COPY ./req-rep/broker.py .
 
 CMD ["python", "broker.py"]

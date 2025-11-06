@@ -1,0 +1,13 @@
+{
+  "name": "pubsub-bot",
+  "version": "1.0.0",
+  "description": "Automated bot that publishes messages to the broker",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js"
+  },
+  "dependencies": {
+    "@msgpack/msgpack": "^2.7.0",
+    "zeromq": "^6.0.0"
+  }
+}

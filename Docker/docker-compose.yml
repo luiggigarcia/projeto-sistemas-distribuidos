@@ -1,0 +1,66 @@
+services:
+
+  broker:
+    build:
+      context: ..
+      dockerfile: Docker/Dockerfile_broker.dockerfile
+    container_name: broker
+    ports:
+      - 5555:5555
+      - 5556:5556
+    volumes:
+      - ../req-rep/storage-server:/app/storage-server
+
+  servidor:
+    build:
+      context: ..
+      dockerfile: Docker/Dockerfile_servidor.dockerfile
+    # Do not set container_name when scaling; replicas will receive unique container names/hostnames.
+    environment:
+      - REFERENCE_ADDR=reference:5560
+    volumes:
+      - ../req-rep/storage-server:/app/storage-server
+    depends_on:
+      - broker
+      - reference
+      - proxy
+    deploy:
+      replicas: 3
+
+  proxy:
+    build:
+      context: ..
+      dockerfile: Docker/Dockerfile_proxy.dockerfile
+    container_name: proxy
+    ports:
+      - 5557:5557
+      - 5558:5558
+
+  reference:
+    build:
+      context: ..
+      dockerfile: Docker/Dockerfile_reference.dockerfile
+    container_name: reference
+    ports:
+      - 5560:5560
+
+  cliente:
+    build:
+      context: ..
+      dockerfile: Docker/Dockerfile_cliente.dockerfile
+    container_name: cliente
+    stdin_open: true
+    tty: true
+    depends_on:
+      - servidor
+      - reference
+  clientbot:
+    build:
+      context: ..
+      dockerfile: Docker/Dockerfile_clientbot.dockerfile
+    depends_on:
+      - broker
+      - proxy
+      - reference
+    deploy:
+      replicas: 2
