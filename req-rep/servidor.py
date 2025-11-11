@@ -7,34 +7,23 @@ import socket as pysocket
 import json
 from datetime import datetime, timedelta, timezone
 
-# Definir timezone de Brasília (UTC-3)
 br_tz = timezone(timedelta(hours=-3))
 
 context = zmq.Context()
 socket = context.socket(zmq.REP)
 socket.connect("tcp://broker:5556")
 
-# Logical clock for this server (Lamport clock)
 logical_clock = 0
-
-# Application-level physical clock (used for Berkeley sync)
 app_time = time.time()
-
-# Message counter; after every 10 messages we trigger clock sync
 message_count = 0
-
-# Coordinator elected name (None until elected)
 coordinator_name = None
 
-# Server identity (used when talking to reference)
 SERVER_NAME = os.environ.get("SERVER_NAME") or pysocket.gethostname()
 
-# Reference endpoint (service that provides rank/list/heartbeat)
 REFERENCE_ADDR = os.environ.get("REFERENCE_ADDR", "reference:5560")
 
-# Admin port (assigned after getting rank): base 5600 + rank
 admin_port = None
-# Our advertised address for reference
+
 SERVER_ADDR = None
 
 def update_clock_on_receive(received):
@@ -42,7 +31,6 @@ def update_clock_on_receive(received):
     try:
         if received is None:
             return
-        # ensure numeric
         r = int(received)
         if r > logical_clock:
             logical_clock = r
@@ -60,9 +48,7 @@ def send_req_to_reference(req_msg):
         ctx = zmq.Context()
         s = ctx.socket(zmq.REQ)
         s.connect(f"tcp://{REFERENCE_ADDR}")
-        # include our clock and timestamp
         now_ts = datetime.now(br_tz).strftime("%H:%M:%S")
-        # increment clock before sending
         c = increment_clock_before_send()
         data = req_msg.get("data", {})
         data["clock"] = c
@@ -75,7 +61,6 @@ def send_req_to_reference(req_msg):
         except Exception:
             import json as _json
             reply = _json.loads(raw.decode('utf-8'))
-        # update clock from reply if present
         try:
             rdata = reply.get("data", {})
             rc = rdata.get("clock")
@@ -91,7 +76,6 @@ def send_req_to_reference(req_msg):
     except Exception as e:
         return {"service": "error", "data": {"status": "erro", "message": str(e)}}
 
-# Background heartbeat thread to inform reference that this server is alive
 def heartbeat_loop(interval=5):
     while True:
         try:
@@ -104,9 +88,7 @@ def heartbeat_loop(interval=5):
             pass
         time.sleep(interval)
 
-# On startup, ask reference for rank and register
 try:
-    # try to get rank from reference (non-blocking tolerant)
     rank_reply = send_req_to_reference({"service": "rank", "data": {"user": SERVER_NAME}})
     server_rank = rank_reply.get("data", {}).get("rank")
 except Exception:
@@ -151,7 +133,6 @@ def publish_announcement(topic, payload):
 
 
 def maybe_trigger_sync():
-    # Called in background when message_count reaches threshold
     global coordinator_name
     try:
         if coordinator_name == SERVER_NAME:
@@ -163,7 +144,6 @@ def maybe_trigger_sync():
                 servers = lst.get("data", {}).get("list", [])
                 coords = [s for s in servers if s.get("name") == coordinator_name]
                 if not coordinator_name or not coords:
-                    # coordinator missing -> try election
                     perform_election()
             except Exception:
                 perform_election()
@@ -179,9 +159,7 @@ def perform_berkeley_sync():
         servers_list = lst_reply.get("data", {}).get("list", [])
         times = []
         addresses = []
-        # include self
         times.append(app_time)
-        # poll others
         for s in servers_list:
             name = s.get('name')
             rank = s.get('rank')
@@ -196,7 +174,7 @@ def perform_berkeley_sync():
         if not times:
             return
         avg = sum(times) / len(times)
-        # instruct all servers (including self) to set to avg
+        
         for s in servers_list:
             name = s.get('name')
             rank = s.get('rank')

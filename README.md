@@ -1,26 +1,33 @@
-Este repositório contém um projeto didático de sistemas distribuídos implementado em Python (com pequenos clientes em Node e Java). O foco foi demonstrar padrões de comunicação (REQ/REP e PUB/SUB), sincronização de relógios (Berkeley) e um serviço de referência para descoberta e eleição entre servidores.
+# Projeto — Sistemas Distribuídos
+Aluno: Luiggi Paschoalini Garcia
+
+Este repositório contém um projeto acadêmico de sistemas distribuídos implementado em Python (com pequenos clientes em Node.js e Java). O objetivo é demonstrar padrões de comunicação (REQ/REP e PUB/SUB), sincronização de relógios (algoritmo de Berkeley combinado com um relógio lógico) e um serviço de referência para descoberta e eleição entre servidores.
 
 Sumário de ferramentas utilizadas:
-- Linguagens: Python, Java (cliente), JavaScript (client-bot de teste)
-- Bibliotecas principais: ZeroMQ (pyzmq), MessagePack (msgpack) — usamos MessagePack.
-- Padrões de comunicação: REQ/REP para operações de login, listar usuários, publicar, enviar mensagem direta, PUB/SUB para entrega de mensagens entre usuários e para anúncios de eleição/coordenador.
+- Linguagens: Python (serviços), Java (cliente), JavaScript (client-bot)
+- Bibliotecas principais: ZeroMQ (pyzmq), MessagePack (msgpack)
+- Padrões de comunicação:
+  - REQ/REP — operações síncronas do cliente e endpoints administrativos do servidor (login, listar usuários, publicar, enviar mensagem direta, etc.).
+  - PUB/SUB — entrega assíncrona de mensagens entre usuários/canais e anúncios do sistema.
 
 Estrutura do repositório
-- `req-rep/` — implementação do servidor REQ/REP, referência, e utilitários de administração.
-- `pub-sub/` — scripts simples de publisher/subscriber para testar o sistema de tópicos.
-- `js-bot/` — bot em Node.js que gera tráfego de teste.
-- `Docker/` — Dockerfiles e `docker-compose.yml` para orquestrar os serviços localmente.
-- `req-rep/storage-server/` — arquivos de dados persistidos localmente (logins, canais, históricos).
+- `req-rep/` — servidor REQ/REP (`servidor.py`), servidor de referência (`reference.py`) e `admin_tool.py` (ferramenta de administração).
+- `pub-sub/` — scripts `publisher.py` e `subscriber.py` para testar tópicos.
+- `js-bot/` — bot Node.js que gera tráfego de teste.
+- `Docker/` — Dockerfiles e `docker-compose.yml` para orquestração local.
+- `req-rep/storage-server/` — arquivos persistidos localmente (logins, canais, históricos).
 
-- Servidor de referência (`req-rep/reference.py`): mantém lista de servidores, aloca `rank` determinístico, aceita `heartbeat` e responde `rank`, `list`, `heartbeat`, `clock`, `election`.
-- Servidor REQ/REP (`req-rep/servidor.py`): trata operações de `login`, `users`, `channel(s)`, `publish`, `message` (mensagens diretas). Integra relógio lógico (Lamport) e relógio de aplicação para sincronização via algoritmo de Berkeley. Possui um endpoint administrativo (porta `5600 + rank`) para consultas `clock`/`election` entre servidores.
-- Eleição simples: eleição determinística baseada em `rank` (maior rank vence) e publicação do coordenador no tópico `servers` via PUB/SUB.
-- Bot em Node (`js-bot/`): gera tráfego de teste — entra, publica em canais e envia mensagens.
+- `req-rep/reference.py` — serviço de referência: fornece `rank`, `list`, `heartbeat`, `clock` e `election`.
+- `req-rep/servidor.py` — servidor REQ/REP com serviços de aplicação (login, users, channel(s), publish, message), relógio lógico e relógio de aplicação para sincronização (Berkeley). Possui endpoint administrativo (porta `5600 + rank`).
+- `req-rep/admin_tool.py` — CLI de administração para testes (list, poll-clock, election, set-clock, announce).
 
-Como rodar (passo-a-passo)
+---
+
+## Como rodar (passo-a-passo)
+
 Pré-requisitos
-- Docker e Docker Compose instalados na sua máquina.
-- Opcional: Git para clonar o repositório.
+- Docker e Docker Compose instalados.
+- (Opcional) Git para clonar o repositório.
 
 1) Clonar o repositório:
 
@@ -29,75 +36,128 @@ git clone https://github.com/luiggigarcia/projeto-sistemas-distribuidos
 cd projeto-sistemas-distribuidos
 ```
 
-2) Construir e iniciar os serviços usando Docker Compose
+2) Iniciar serviços com Docker Compose
 
-Este projeto foi pensado para rodar em containers. O `docker-compose.yml` está em `Docker/docker-compose.yml`.
-
-Para rodar localmente em modo de teste com 3 réplicas do servidor e 2 bots de cliente:
+O compose está em `Docker/docker-compose.yml`. Exemplo para levantar 3 réplicas do servidor e 2 bots:
 
 ```bash
 cd Docker
-docker compose -f docker-compose.yml up -d --build servidor=3 --scale clientbot=2
+docker compose up --build --scale servidor=3 --scale clientbot=2
 ```
 
-3) Verificar se os containers estão rodando
+Observação: use `--scale` repetido para cada serviço que quiser escalar (como no exemplo acima).
+
+3) Verificar containers e logs
 
 ```bash
 docker ps
-docker logs -f <container-name>    # por exemplo docker logs -f docker-servidor-1
+docker compose -f Docker/docker-compose.yml ps
+docker compose -f Docker/docker-compose.yml logs -f reference
 ```
 
-4) Verificar servidores registrados na referência
+4) Ferramenta administrativa (fora dos containers)
 
-Os servidores anunciam-se para o serviço de referência que persiste em `req-rep/storage-server/servers.txt` (volume montado no container). Você pode inspecionar esse arquivo no host:
-
-```bash
-cat req-rep/storage-server/servers.txt
-```
-
-5) Testar operações básicas
+- Listar servidores registrados pelo `reference`:
 
 ```bash
-# exemplo: listar servidores
+docker exec -it <nome do servidor> sh
 python3 req-rep/admin_tool.py list
+```
 
-# exemplo: solicitar eleição entre servidores
+- Forçar eleição (enviar `election` para todos os servidores):
+
+```bash
 python3 req-rep/admin_tool.py election --all
 ```
 
-Arquivos importantes
-- `req-rep/servidor.py` — lógica principal do servidor REQ/REP, relógios e administração entre servidores.
-- `req-rep/reference.py` — serviço de referência (rank, list, heartbeat).
-- `req-rep/admin_tool.py` — utilitário para enviar requisições administrativas (list, clock, election).
-- `pub-sub/publisher.py` e `pub-sub/subscriber.py` — ferramentas manuais para testar tópicos.
+- Ver clocks dos servidores via admin endpoint:
 
-## Testando com o cliente Java (passo-a-passo)
 ```bash
-cd Docker
-2) Conectar-se ao cliente Java (duas opções):
+python3 req-rep/admin_tool.py poll-clock
+```
 
-- Usar `docker attach cliente`
-Observações sobre `docker attach`:
-- Para se desanexar sem parar o container, pressione `Ctrl-p` seguido de `Ctrl-q`.
-- `docker attach` conecta sua entrada/saída ao processo principal do container (neste caso, o menu do cliente Java). Se quiser abrir um novo shell no container em paralelo, use `docker exec -it cliente sh`.
+- Anunciar coordinator manualmente (publica no tópico `servers`):
 
-3) O menu do cliente Java
+```bash
+python3 req-rep/admin_tool.py announce --coordinator servidor1
+```
 
-Quando você conectar ao cliente verá um menu com as opções numeradas. Abaixo explico cada opção e o que ela faz, o que esperar no servidor e como acompanhar os resultados:
+---
+
+## Operações dos servidores — o que são e como testar
+
+Você pode testar as operações:
+- Usando `req-rep/admin_tool.py` 
+- Usando o cliente Java (`Cliente.java`) para executar operações de usuário reais (login, publish, message, etc.).
+
+Principais serviços REQ/REP (mapeamento para o `Cliente.java`):
+- `login`
+  - Dados: `{ "service":"login", "data": { "user":"nome", "timestamp":"HH:MM:SS", "clock": N } }`
+  - Comportamento: registra o usuário em `/app/storage-server/logins.txt` se não existir; responde `status: "sucesso"` ou `status: "logado"`.
+  - Teste: no `Cliente.java` escolha opção 1 (Login).
+
+- `users`
+  - Retorna a lista de usuários (lê `logins.txt`). Teste: Cliente opção 2.
+
+- `channel` / `channels`
+  - `channel` cria um canal (grava `channels.txt`), `channels` lista canais. Teste: opções 3/4 no Cliente.
+
+- `publish`
+  - Publica mensagem em um canal via PUB/SUB (proxy), grava `historico_pubsub.txt`.
+  - Teste: Cliente opção 5 ou `pub-sub/publisher.py` para publicar direto no proxy.
+
+- `message`
+  - Mensagem direta: verifica destino, publica no tópico do usuário destino e grava `historico_msg.txt`.
+  - Teste: Cliente opção 6.
+
+Como acompanhar resultados nos servidores:
+- `docker compose logs -f <service>` ou `docker logs -f <container>`; servidores usam `pretty_print` para logs legíveis.
+
+O cliente mantém um relógio lógico e atualiza ao receber respostas com campo `clock`.
 
 
-O utilitário `req-rep/admin_tool.py` facilita operações administrativas e de depuração entre servidores e o serviço de referência. Abaixo explico cada comando e mostro exemplos de uso.
-1) `list` — listar servidores registrados
-	- O comando pergunta a `reference` pela lista de servidores registrados.
-2) `poll-clock` — perguntar o `clock` (admin endpoint) de todos os servidores
-	- Envia `service: clock` ao endpoint administrativo de cada servidor (porta `5600 + rank`).
-3) `election` — solicitar eleição ou checar coordenador
-	- Envia `service: election` a servidores.
-4) `set-clock` — instruir um servidor a ajustar seu relógio de aplicação
+## Relógios — como está implementado
 
-5) `announce` — publicar coordenador no tópico `servers`
-	- Publica uma mensagem no tópico `servers` para que todos os servidores (ou listeners) atualizem seu `coordinator_name`.
-	- Uso:
+O projeto usa dois tipos de relógio:
 
+1) Relógio lógico
+  - Variável `logical_clock` no servidor e `clock` no cliente Java.
+  - Incrementa antes de enviar mensagens (`increment_clock_before_send()`); ao receber mensagem com campo `clock` atualiza se o recebido for maior (`update_clock_on_receive()`).
+  - Serve para ordenação causal simples de eventos.
 
+2) Relógio físico de aplicação + algoritmo de Berkeley
+  - Cada servidor mantém `app_time` (Unix epoch float).
+  - O coordenador (eleito) executa `perform_berkeley_sync()` periodicamente (no demo: controlador dispara após cada 10 mensagens) para pedir tempos, calcular média e instruir ajuste (`clock` admin message com `time: avg`).
+  - A eleição escolhe o servidor com maior `rank`.
 
+---
+
+## Eleição de coordenador (detalhes)
+
+- Fluxo: servidores registram-se no `reference` (obtêm `rank`). Se um servidor detecta ausência do coordenador ou acha necessário, chama `perform_election()`.
+- `perform_election()` pede a lista ao `reference`, escolhe o servidor com maior `rank`, define `coordinator_name` e publica anúncio no tópico `servers`.
+- Todos os servidores subscritos ao tópico `servers` atualizam seu `coordinator_name` quando recebem a mensagem.
+
+---
+
+## Comandos úteis / exemplos rápidos
+
+- Listar servidores:
+```bash
+python3 req-rep/admin_tool.py list
+```
+
+- Forçar eleição:
+```bash
+python3 req-rep/admin_tool.py election --all
+```
+
+- Ver clocks de todos os servidores:
+```bash
+python3 req-rep/admin_tool.py poll-clock
+```
+
+- Anunciar coordenador no tópico `servers`:
+```bash
+python3 req-rep/admin_tool.py announce --coordinator servidor2
+```

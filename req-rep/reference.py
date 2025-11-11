@@ -7,7 +7,6 @@ import threading
 import msgpack
 import zmq
 
-# Storage file for registered servers
 STORAGE_DIR = os.environ.get('STORAGE_DIR', os.path.join(os.path.dirname(__file__), 'storage-server'))
 SERVERS_FILE = os.path.join(STORAGE_DIR, 'servers.txt')
 
