@@ -12,7 +12,7 @@ Sumário de ferramentas utilizadas:
 
 Estrutura do repositório
 - `req-rep/` — servidor REQ/REP (`servidor.py`), servidor de referência (`reference.py`) e `admin_tool.py` (ferramenta de administração).
-- `pub-sub/` — scripts `publisher.py` e `subscriber.py` para testar tópicos.
+- `pub-sub/` — serviço de publicação e inscrição de tópicos.
 - `js-bot/` — bot Node.js que gera tráfego de teste.
 - `Docker/` — Dockerfiles e `docker-compose.yml` para orquestração local.
 - `req-rep/storage-server/` — arquivos persistidos localmente (logins, canais, históricos).
@@ -57,40 +57,37 @@ docker compose -f Docker/docker-compose.yml logs -f reference
 
 4) Ferramenta administrativa (fora dos containers)
 
-- Listar servidores registrados pelo `reference`:
-
 ```bash
 docker exec -it <nome do servidor> sh
-python3 req-rep/admin_tool.py list
+python3 admin_tool.py list
 ```
 
 - Forçar eleição (enviar `election` para todos os servidores):
 
 ```bash
-python3 req-rep/admin_tool.py election --all
+python3 admin_tool.py election --all
 ```
 
-- Ver clocks dos servidores via admin endpoint:
+- Ver clocks dos servidores:
 
 ```bash
-python3 req-rep/admin_tool.py poll-clock
+python3 admin_tool.py poll-clock
 ```
 
-- Anunciar coordinator manualmente (publica no tópico `servers`):
+- Anunciar coordenador manualmente:
 
 ```bash
-python3 req-rep/admin_tool.py announce --coordinator servidor1
+python3 admin_tool.py announce --coordinator servidor1
 ```
 
 ---
 
-## Operações dos servidores — o que são e como testar
+## Operações dos servidores — como testar
 
 Você pode testar as operações:
-- Usando `req-rep/admin_tool.py` 
 - Usando o cliente Java (`Cliente.java`) para executar operações de usuário reais (login, publish, message, etc.).
 
-Principais serviços REQ/REP (mapeamento para o `Cliente.java`):
+Principais serviços REQ/REP:
 - `login`
   - Dados: `{ "service":"login", "data": { "user":"nome", "timestamp":"HH:MM:SS", "clock": N } }`
   - Comportamento: registra o usuário em `/app/storage-server/logins.txt` se não existir; responde `status: "sucesso"` ou `status: "logado"`.
@@ -125,9 +122,9 @@ O projeto usa dois tipos de relógio:
   - Incrementa antes de enviar mensagens (`increment_clock_before_send()`); ao receber mensagem com campo `clock` atualiza se o recebido for maior (`update_clock_on_receive()`).
   - Serve para ordenação causal simples de eventos.
 
-2) Relógio físico de aplicação + algoritmo de Berkeley
+2) Relógio de aplicação + algoritmo de Berkeley
   - Cada servidor mantém `app_time` (Unix epoch float).
-  - O coordenador (eleito) executa `perform_berkeley_sync()` periodicamente (no demo: controlador dispara após cada 10 mensagens) para pedir tempos, calcular média e instruir ajuste (`clock` admin message com `time: avg`).
+  - O coordenador (eleito) executa `perform_berkeley_sync()` periodicamente (controlador dispara após cada 10 mensagens) para pedir tempos, calcular média e instruir ajuste (`clock` admin message com `time: avg`).
   - A eleição escolhe o servidor com maior `rank`.
 
 ---
